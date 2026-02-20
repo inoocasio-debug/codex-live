@@ -1,7 +1,0 @@
-codex-live/
-│
-├─ backend.py
-├─ requirements.txt  ← obligatorio
-└─ frontend/
-    ├─ index.html
-    └─ mockup.png
