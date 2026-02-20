@@ -1,0 +1,51 @@
+from fastapi import FastAPI
+from pydantic import BaseModel
+import random
+
+app = FastAPI()
+
+# Health check para Render
+@app.get("/")
+def root():
+    return {"status": "ok"}
+
+# Modelo de señal
+class Signal(BaseModel):
+    market: str
+    momentum: int
+    signal: str
+    size: float
+
+# Función simulada de Order Book
+def get_kalshi_orderbook(market_id):
+    bids = [{"price": round(random.uniform(0.2,0.8),2), "size": random.randint(1,10)} for _ in range(5)]
+    asks = [{"price": round(random.uniform(0.2,0.8),2), "size": random.randint(1,10)} for _ in range(5)]
+    return {"bids": bids, "asks": asks}
+
+# Calcula momentum
+def calculate_momentum(orderbook):
+    bid = sum([b['price']*b['size'] for b in orderbook.get('bids',[])])
+    ask = sum([a['price']*a['size'] for a in orderbook.get('asks',[])])
+    return int((bid/(bid+ask))*100) if (bid+ask)>0 else 50
+
+# Genera señal y tamaño recomendado
+def generate_signal(orderbook, market_name, risk_per_event=20):
+    momentum = calculate_momentum(orderbook)
+    if momentum >= 72:
+        signal = "ENTRY"
+        size = round(risk_per_event * (momentum/100),2)
+    elif momentum >= 60:
+        signal = "WAIT"
+        size = 0
+    else:
+        signal = "EXIT"
+        size = 0
+    return Signal(market=market_name, momentum=momentum, signal=signal, size=size)
+
+# Endpoint de señales
+@app.get("/signal/{market_id}")
+def get_signal(market_id: str):
+    market_name = "NBA Game/Props" if "NBA" in market_id.upper() else "Tennis Match/Set"
+    orderbook = get_kalshi_orderbook(market_id)
+    signal = generate_signal(orderbook, market_name)
+    return signal.dict()
