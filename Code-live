@@ -1,0 +1,68 @@
+from fastapi import FastAPI
+from pydantic import BaseModel
+import random
+
+app = FastAPI(title="Kalshi Sim API")
+
+# --------------------------
+# Health check
+# --------------------------
+@app.get("/")
+def root():
+    return {"status": "ok"}
+
+# --------------------------
+# Modelo de señal
+# --------------------------
+class Signal(BaseModel):
+    market: str
+    momentum: int
+    signal: str
+    size: float
+
+# --------------------------
+# Función simulada de Order Book
+# --------------------------
+def get_kalshi_orderbook(market_id: str):
+    bids = [{"price": round(random.uniform(10, 20), 2), "size": random.randint(1, 5)} for _ in range(5)]
+    asks = [{"price": round(random.uniform(21, 30), 2), "size": random.randint(1, 5)} for _ in range(5)]
+    return {"bids": bids, "asks": asks}
+
+# --------------------------
+# Calcula momentum
+# --------------------------
+def calculate_momentum(orderbook):
+    bid_total = sum([b['price'] * b['size'] for b in orderbook['bids']])
+    ask_total = sum([a['price'] * a['size'] for a in orderbook['asks']])
+    if (bid_total + ask_total) == 0:
+        return 0
+    return int((bid_total / (bid_total + ask_total)) * 100)
+
+# --------------------------
+# Endpoint para obtener Order Book
+# --------------------------
+@app.get("/orderbook/{market_id}")
+def orderbook_endpoint(market_id: str):
+    orderbook = get_kalshi_orderbook(market_id)
+    momentum = calculate_momentum(orderbook)
+    return {"market_id": market_id, "orderbook": orderbook, "momentum": momentum}
+
+# --------------------------
+# Endpoint para generar señal
+# --------------------------
+@app.post("/signal")
+def generate_signal(signal: Signal):
+    # Aquí podrías poner tu lógica real de señal
+    # Por ahora, simulamos una respuesta basada en momentum
+    if signal.momentum > 60:
+        action = "BUY"
+    elif signal.momentum < 40:
+        action = "SELL"
+    else:
+        action = "HOLD"
+    return {
+        "market": signal.market,
+        "momentum": signal.momentum,
+        "recommended_action": action,
+        "size": signal.size
+    }
