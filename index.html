@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Code X Live - iPhone</title>
+<style>
+body { font-family: Arial; margin: 20px; background:#111; color:#fff; }
+h1 { color:#0ff; }
+button { background:#0ff; border:none; padding:10px 20px; margin:5px; color:#000; font-weight:bold; cursor:pointer; }
+input { padding:5px; width:100px; }
+pre { background:#222; padding:10px; overflow-x:auto; }
+</style>
+</head>
+<body>
+<h1>Code X Live - iPhone</h1>
+
+<label>Market ID: </label>
+<input id="marketId" value="market123">
+<br>
+<button onclick="fetchOrderbook()">Orderbook</button>
+<button onclick="fetchSignal()">Signal</button>
+
+<h2>Output:</h2>
+<pre id="output">Aquí verás los resultados...</pre>
+
+<script>
+const baseUrl = "https://codex-live-1.onrender.com";
+
+async function fetchOrderbook() {
+    const market = document.getElementById('marketId').value;
+    const res = await fetch(`${baseUrl}/orderbook/${market}`);
+    const data = await res.json();
+    document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+}
+
+async function fetchSignal() {
+    const market = document.getElementById('marketId').value;
+    const payload = { market: market, size: 10 };
+    const res = await fetch(`${baseUrl}/signal`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+}
+</script>
+</body>
+</html>
