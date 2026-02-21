@@ -45,39 +45,7 @@ def get_dynamic_orderbook(market_id: str):
     return {"bids": bids, "asks": asks, "pressure": MARKET_PRESSURE[market_id]}
 
 # --------------------------
-# Calcula momentum dinámico
-# --------------------------
-def calculate_momentum(orderbook):
-    bid_total = sum([b['price']*b['size'] for b in orderbook['bids']])
-    ask_total = sum([a['price']*a['size'] for a in orderbook['asks']])
-    if bid_total + ask_total == 0:
-        return 50
-    momentum = int((bid_total / (bid_total + ask_total)) * 100)
-    momentum = int(momentum * (1 + (orderbook['pressure'] - 0.5)))
-    return max(0, min(momentum, 100))
-
-# --------------------------
-# Endpoint de Orderbook dinámico
-# --------------------------
-@app.get("/orderbook/{market_id}")
-def orderbook_endpoint(market_id: str):
-    ob = get_dynamic_orderbook(market_id)
-    momentum = calculate_momentum(ob)
-    return {"market_id": market_id, "orderbook": ob, "momentum": momentum}
-
-# --------------------------
-# Endpoint de señal agresiva
-# --------------------------
-@app.post("/signal")
-def generate_signal(signal: Signal):
-    ob = get_dynamic_orderbook(signal.market)
-    momentum = calculate_momentum(ob)
-    if momentum > 65:
-        action = "BUY"
-        size = round(signal.size * (momentum / 100), 2)
-    elif momentum < 35:
-        action = "SELL"
-        size = round(signal.size * ((100 - momentum) / 100), 2)
+# Calcula momentum ": 
     else:
         action = "HOLD"
         size = signal.size
