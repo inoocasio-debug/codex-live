@@ -1,21 +1,23 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import random
+import os
 
 app = FastAPI(title="Code X Live")
 
 # --------------------------
-# Monta la carpeta raíz para servir archivos web
+# Servir archivos estáticos en /static
 # --------------------------
-app.mount("/", StaticFiles(directory=".", html=True), name="static")
+app.mount("/static", StaticFiles(directory="."), name="static")
 
 # --------------------------
-# Health check
+# Servir index.html en la raíz
 # --------------------------
-@app.get("/health")
-def root():
-    return {"status": "ok"}
+@app.get("/")
+def serve_index():
+    return FileResponse(os.path.join(".", "index.html"))
 
 # --------------------------
 # Modelo de señal
@@ -45,14 +47,40 @@ def get_dynamic_orderbook(market_id: str):
     return {"bids": bids, "asks": asks, "pressure": MARKET_PRESSURE[market_id]}
 
 # --------------------------
-# Calcula momentum ": 
+# Calcula momentum dinámico
+# --------------------------
+def calculate_momentum(orderbook):
+    bid_total = sum([b['price']*b['size'] for b in orderbook['bids']])
+    ask_total = sum([a['price']*a['size'] for a in orderbook['asks']])
+    if bid_total + ask_total == 0:
+        return 50
+    momentum = int((bid_total / (bid_total + ask_total)) * 100)
+    momentum = int(momentum * (1 + (orderbook['pressure'] - 0.5)))
+    return max(0, min(momentum, 100))
+
+# --------------------------
+# Endpoint de Orderbook
+# --------------------------
+@app.get("/orderbook/{market_id}")
+def orderbook_endpoint(market_id: str):
+    ob = get_dynamic_orderbook(market_id)
+    momentum = calculate_momentum(ob)
+    return {"market_id": market_id, "orderbook": ob, "momentum": momentum}
+
+# --------------------------
+# Endpoint de señal agresiva
+# --------------------------
+@app.post("/signal")
+def generate_signal(signal: Signal):
+    ob = get_dynamic_orderbook(signal.market)
+    momentum = calculate_momentum(ob)
+    if momentum > 65:
+        action = "BUY"
+        size = round(signal.size * (momentum / 100), 2)
+    elif momentum < 35:
+        action = "SELL"
+        size = round(signal.size * ((100 - momentum)/100), 2)
     else:
         action = "HOLD"
         size = signal.size
-    return {
-        "market": signal.market,
-        "momentum": momentum,
-        "recommended_action": action,
-        "size": size,
-        "orderbook": ob
-    }
+    return {"market": signal.market, "momentum": momentum, "recommended_action": action, "size": size, "orderbook": ob}
